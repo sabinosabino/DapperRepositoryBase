@@ -17,6 +17,10 @@ namespace BaseDapper
             _connection = connection;
         }
 
+        public IDbConnection GetConnection()
+        {
+            return _connection;
+        }
         public async Task<IEnumerable<T>> QueryAsync<T>(object param)
         {
             string sql = $"SELECT * FROM {GetTableName<T>()}";
