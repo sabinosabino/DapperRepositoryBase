@@ -84,6 +84,31 @@ namespace BaseDapper
             return $"UPDATE {tableName} SET {columnsUpdate} WHERE Id = @Id";
         }
 
+        public async Task PrintColumnsType(string sql){
+            var result = await _connection.QueryAsync(sql);
+
+            foreach (var item in result)
+            {
+                Console.WriteLine($"public {parseType(item.TipoDeDado)} {item.NomeDaColuna} {{get;set;}}");
+            }
+        }
+
+        private string parseType(string type){
+            switch (type)
+            {
+                case "int":
+                    return "int";
+                case "varchar":
+                    return "string ?";
+                case "datetime":
+                    return "DateTime";
+                case "bit":
+                    return "bool";
+                default:
+                    return "string";
+            }
+        }
+
     }
 
     //------------------------------------------------------------------------------
