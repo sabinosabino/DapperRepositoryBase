@@ -191,13 +191,13 @@ namespace BaseDapper
         {
             return await _db.QueryFirstOrDefaultAsync<T>(new { Id = id });
         }
-        public async Task<int> Insert(T unidade, string ignore = "Id")
+        public async Task<int> Insert(T model, string ignore = "Id")
         {
-            return await _db.InsertAsync<T>(unidade, ignore);
+            return await _db.InsertAsync<T>(model, ignore);
         }
-        public async Task<int> Update(T unidade, string ignore = "Id")
+        public async Task<int> Update(T model, string ignore = "Id")
         {
-            return await _db.UpdateAsync<T>(unidade, ignore);
+            return await _db.UpdateAsync<T>(model, ignore);
         }
         public async Task<int> Delete(int id)
         {
