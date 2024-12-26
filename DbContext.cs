@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using Dapper;
 
@@ -39,12 +41,14 @@ namespace BaseDapper
 
         public async Task<int> InsertAsync<T>(T entity, string ignore = "Id")
         {
+            ValidarObjeto(entity);
             string sql = GenSqlInsert<T>(ignore);
             return await _connection.ExecuteAsync(sql, entity);
         }
 
         public async Task<int> UpdateAsync<T>(T entity, string ignore = "Id")
         {
+            ValidarObjeto(entity);
             string sql = GenSqlUpdate<T>(ignore);
             return await _connection.ExecuteAsync(sql, entity);
         }
@@ -84,7 +88,16 @@ namespace BaseDapper
             return $"UPDATE {tableName} SET {columnsUpdate} WHERE Id = @Id";
         }
 
-        public async Task PrintColumnsType(string sql){
+        public async Task PrintColumnsTypeSQLSERVER(string tableName)
+        {
+            string sql = @$"SELECT 
+                        c.name AS NomeDaColuna,
+                        t.name AS TipoDeDado,
+                        c.max_length AS TamanhoMaximo
+                        FROM sys.columns c
+                        INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+                        WHERE c.object_id = OBJECT_ID('{tableName}')
+                        ORDER BY c.column_id;";
             var result = await _connection.QueryAsync(sql);
 
             foreach (var item in result)
@@ -93,7 +106,34 @@ namespace BaseDapper
             }
         }
 
-        private string parseType(string type){
+        public async Task PrintColumnsTypeMySQL(string tableName)
+        {
+            string sql = @$"SELECT 
+                        COLUMN_NAME AS NomeDaColuna,
+                        DATA_TYPE AS TipoDeDado
+                        FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{tableName}'
+                        ORDER BY ORDINAL_POSITION;";
+            var result = await _connection.QueryAsync(sql);
+
+            foreach (var item in result)
+            {
+                Console.WriteLine($"public {parseType(item.TipoDeDado)} {item.NomeDaColuna} {{get;set;}}");
+            }
+        }
+
+        public async Task PrintColumnsTypeSQLite(string tableName)
+        {
+            string sql = @$"PRAGMA table_info('{tableName}');";
+            var result = await _connection.QueryAsync(sql);
+
+            foreach (var item in result)
+            {
+                Console.WriteLine($"public {parseType(item.type)} {item.name} {{get;set;}}");
+            }
+        }
+        private string parseType(string type)
+        {
             switch (type)
             {
                 case "int":
@@ -106,6 +146,24 @@ namespace BaseDapper
                     return "bool";
                 default:
                     return "string";
+            }
+        }
+
+        private void ValidarObjeto(object obj)
+        {
+            var resultados = new List<ValidationResult>();
+            var contexto = new ValidationContext(obj, serviceProvider: null, items: null);
+
+            Validator.TryValidateObject(obj, contexto, resultados, validateAllProperties: true);
+
+            StringBuilder stringBuilder = new StringBuilder("Campos Inválidos: ");
+            if (resultados.Count() > 0)
+            {
+                foreach (var item in resultados)
+                    stringBuilder.AppendLine(item.ErrorMessage);
+
+
+                throw new Exception(stringBuilder.ToString());
             }
         }
 
@@ -133,13 +191,13 @@ namespace BaseDapper
         {
             return await _db.QueryFirstOrDefaultAsync<T>(new { Id = id });
         }
-        public async Task<int> Insert(T unidade)
+        public async Task<int> Insert(T unidade, string ignore = "Id")
         {
-            return await _db.InsertAsync<T>(unidade);
+            return await _db.InsertAsync<T>(unidade, ignore);
         }
-        public async Task<int> Update(T unidade)
+        public async Task<int> Update(T unidade, string ignore = "Id")
         {
-            return await _db.UpdateAsync<T>(unidade);
+            return await _db.UpdateAsync<T>(unidade, ignore);
         }
         public async Task<int> Delete(int id)
         {
