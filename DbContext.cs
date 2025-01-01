@@ -104,6 +104,8 @@ namespace BaseDapper
             {
                 Console.WriteLine($"public {parseType(item.TipoDeDado)} {item.NomeDaColuna} {{get;set;}}");
             }
+            generatedCommands(tableName);
+
         }
 
         public async Task PrintColumnsTypeMySQL(string tableName)
@@ -120,6 +122,8 @@ namespace BaseDapper
             {
                 Console.WriteLine($"public {parseType(item.TipoDeDado)} {item.NomeDaColuna} {{get;set;}}");
             }
+            generatedCommands(tableName);
+
         }
 
         public async Task PrintColumnsTypeSQLite(string tableName)
@@ -131,6 +135,15 @@ namespace BaseDapper
             {
                 Console.WriteLine($"public {parseType(item.type)} {item.name} {{get;set;}}");
             }
+
+            generatedCommands(tableName);
+        }
+        public void generatedCommands(string tableName){
+            StringBuilder model = new StringBuilder();
+            model.AppendLine(@$"dotnet aspnet-codegenerator view Index List -m {tableName} --relativeFolderPath views/{tableName}");
+            model.AppendLine(@$"dotnet aspnet-codegenerator view _create Create -m {tableName} --relativeFolderPath views/{tableName}");
+            model.AppendLine(@$"dotnet aspnet-codegenerator view _delete Delete -m {tableName} --relativeFolderPath views/{tableName}");
+            Console.WriteLine(model.ToString());
         }
         private string parseType(string type)
         {
