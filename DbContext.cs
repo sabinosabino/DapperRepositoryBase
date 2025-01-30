@@ -45,6 +45,14 @@ namespace BaseDapper
             string sql = GenSqlInsert<T>(ignore);
             return await _connection.ExecuteAsync(sql, entity);
         }
+        public async Task<T> GetLastInsertedAsync<T>(string idColumn = "Id")
+        {
+            string sql = $@"
+                SELECT * FROM {GetTableName<T>()} 
+                WHERE {idColumn} = (SELECT MAX({idColumn}) FROM {GetTableName<T>()})";
+
+            return await _connection.QueryFirstOrDefaultAsync<T>(sql);
+        }
 
         public async Task<int> UpdateAsync<T>(T entity, string ignore = "Id")
         {
@@ -90,60 +98,45 @@ namespace BaseDapper
 
         public async Task PrintColumnsTypeSQLSERVER(string tableName)
         {
-            string sql = @$"SELECT 
+            string sql = @"SELECT 
                         c.name AS NomeDaColuna,
                         t.name AS TipoDeDado,
                         c.max_length AS TamanhoMaximo
                         FROM sys.columns c
                         INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
-                        WHERE c.object_id = OBJECT_ID('{tableName}')
-                        ORDER BY c.column_id;";
+                        WHERE c.object_id = OBJECT_ID('" + tableName + "') ORDER BY c.column_id;";
             var result = await _connection.QueryAsync(sql);
 
             foreach (var item in result)
             {
                 Console.WriteLine($"public {parseType(item.TipoDeDado)} {item.NomeDaColuna} {{get;set;}}");
             }
-            generatedCommands(tableName);
-
         }
 
         public async Task PrintColumnsTypeMySQL(string tableName)
         {
-            string sql = @$"SELECT 
+            string sql = @"SELECT 
                         COLUMN_NAME AS NomeDaColuna,
                         DATA_TYPE AS TipoDeDado
                         FROM INFORMATION_SCHEMA.COLUMNS
-                        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{tableName}'
-                        ORDER BY ORDINAL_POSITION;";
+                        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" + tableName + "'ORDER BY ORDINAL_POSITION;";
             var result = await _connection.QueryAsync(sql);
 
             foreach (var item in result)
             {
                 Console.WriteLine($"public {parseType(item.TipoDeDado)} {item.NomeDaColuna} {{get;set;}}");
             }
-            generatedCommands(tableName);
-
         }
 
         public async Task PrintColumnsTypeSQLite(string tableName)
         {
-            string sql = @$"PRAGMA table_info('{tableName}');";
+            string sql = @"PRAGMA table_info('" + tableName + ");";
             var result = await _connection.QueryAsync(sql);
 
             foreach (var item in result)
             {
                 Console.WriteLine($"public {parseType(item.type)} {item.name} {{get;set;}}");
             }
-
-            generatedCommands(tableName);
-        }
-        public void generatedCommands(string tableName){
-            StringBuilder model = new StringBuilder();
-            model.AppendLine(@$"dotnet aspnet-codegenerator view Index List -m {tableName} --relativeFolderPath views/{tableName}");
-            model.AppendLine(@$"dotnet aspnet-codegenerator view _create Create -m {tableName} --relativeFolderPath views/{tableName}");
-            model.AppendLine(@$"dotnet aspnet-codegenerator view _delete Delete -m {tableName} --relativeFolderPath views/{tableName}");
-            Console.WriteLine(model.ToString());
         }
         private string parseType(string type)
         {
@@ -196,6 +189,7 @@ namespace BaseDapper
         {
             return await _db.QueryAsync<T>(new { });
         }
+        
         public async Task<IEnumerable<T>> GetWhere(string expressao, object param)
         {
             return await _db.QueryAsync<T>(expressao, param);
@@ -203,6 +197,10 @@ namespace BaseDapper
         public async Task<T> GetOne(int id)
         {
             return await _db.QueryFirstOrDefaultAsync<T>(new { Id = id });
+        }
+        public async Task<T> GetLast(string idColumn = "Id")
+        {
+            return await _db.GetLastInsertedAsync<T>(idColumn);
         }
         public async Task<int> Insert(T model, string ignore = "Id")
         {
