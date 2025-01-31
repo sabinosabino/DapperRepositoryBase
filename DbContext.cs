@@ -28,6 +28,13 @@ namespace BaseDapper
             string sql = $"SELECT * FROM {GetTableName<T>()}";
             return await _connection.QueryAsync<T>(sql, param);
         }
+        public async Task<int> NewIdAsync<T>(string idColumn="Id")
+        {
+                string sql = $"SELECT MAX({idColumn}) FROM {GetTableName<T>()}";
+                var result = await _connection.QuerySingleOrDefaultAsync<int>(sql);
+                return Convert.ToInt32(result) + 1;
+        }
+
         public async Task<IEnumerable<T>> QueryAsync<T>(string expressao, object param)
         {
             string sql = $"SELECT * FROM {GetTableName<T>()} WHERE {expressao}";
@@ -188,6 +195,18 @@ namespace BaseDapper
         public async Task<IEnumerable<T>> GetAll()
         {
             return await _db.QueryAsync<T>(new { });
+        }
+        public async Task<int> NewId(string idColumn = "Id")
+        {
+            try
+            {
+                return await _db.NewIdAsync<T>(idColumn);
+            }
+            catch
+            {
+                 return 1;
+            }
+            
         }
         
         public async Task<IEnumerable<T>> GetWhere(string expressao, object param)
