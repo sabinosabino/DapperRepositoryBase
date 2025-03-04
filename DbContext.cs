@@ -85,21 +85,43 @@ namespace BaseDapper
             return string.Join(",", columns);
         }
 
-        private string GenSqlInsert<T>(string ignore)
+        private string GenSqlInsert<T>(string ignore = "")
         {
-            string[] ignoreColumns = ignore.Split(',');
+            var type = typeof(T);
+            var properties = type.GetProperties();
+            
+            // Filtra propriedades que não são NotMapped
+            var validColumns = properties
+                .Where(p => !p.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute), true).Any())
+                .Select(p => p.Name);
+
+            // Adiciona colunas para ignorar manualmente
+            string[] ignoreColumns = !string.IsNullOrEmpty(ignore) ? ignore.Split(',') : new string[0];
+            
             var tableName = GetTableName<T>();
-            var columns = GetColumns<T>();
-            var columnsInsert = string.Join(",", columns.Split(',').Where(c => !ignoreColumns.Contains(c)));
-            return $"INSERT INTO {tableName} ({columnsInsert}) VALUES ({string.Join(",", columnsInsert.Split(',').Select(c => $"@{c}"))})";
+            var finalColumns = string.Join(",", validColumns.Where(c => !ignoreColumns.Contains(c)));
+            
+            return $"INSERT INTO {tableName} ({finalColumns}) VALUES ({string.Join(",", finalColumns.Split(',').Select(c => $"@{c}"))})";
         }
 
-        private string GenSqlUpdate<T>(string ignore)
+        private string GenSqlUpdate<T>(string ignore = "")
         {
-            string[] ignoreColumns = ignore.Split(',');
+            var type = typeof(T);
+            var properties = type.GetProperties();
+            
+            // Filtra propriedades que não são NotMapped
+            var validColumns = properties
+                .Where(p => !p.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute), true).Any())
+                .Select(p => p.Name);
+
+            // Adiciona colunas para ignorar manualmente
+            string[] ignoreColumns = !string.IsNullOrEmpty(ignore) ? ignore.Split(',') : new string[0];
+            
             var tableName = GetTableName<T>();
-            var columns = GetColumns<T>();
-            var columnsUpdate = string.Join(",", columns.Split(',').Where(c => !ignoreColumns.Contains(c)).Select(c => $"{c} = @{c}"));
+            var columnsUpdate = string.Join(",", validColumns
+                .Where(c => !ignoreColumns.Contains(c))
+                .Select(c => $"{c} = @{c}"));
+            
             return $"UPDATE {tableName} SET {columnsUpdate} WHERE Id = @Id";
         }
 
