@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Dapper;
+using Repositories;
 
 namespace BaseDapper
 {
@@ -230,7 +231,6 @@ namespace BaseDapper
             }
             
         }
-        
         public async Task<IEnumerable<T>> GetWhere(string expressao, object param)
         {
             return await _db.QueryAsync<T>(expressao, param);
@@ -257,4 +257,14 @@ namespace BaseDapper
         }
     }
 
+    public class RepositoryAll{
+        private readonly IDbConnection _connection;
+        private readonly DbContext _db;
+        public RepositoryAll(IDbConnection connection)
+        {
+            _connection = connection;
+            _db = new DbContext(connection);
+        }
+        //public NomeRepository Nome { get{return new NomeRepository(_db);} }
+    }
 }
