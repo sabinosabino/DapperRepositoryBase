@@ -2,43 +2,51 @@
 
 using System.Data.SqlClient;
 using System.Globalization;
+using System.Text;
 using CsvHelper;
 using Dapper;
-
-Console.WriteLine("Hello, World!");
-var connectionString = "Server=;Database=;User Id=sa;Password=;TrustServerCertificate=True";
-var sql = "select Id,Nota,ValorComputar,DataNota,Recebedor, Null Teste from view_notas";
-
-using (var connection = new SqlConnection(connectionString))
+public class GenerateCsvDynamicService
 {
-    // Obter os resultados com Dapper como `dynamic`
-    var results = (await connection.QueryAsync(sql)).ToList();
-
-    // Converter os resultados para um formato utilizável pelo CsvHelper
-    var csvData = results.Select(row => (IDictionary<string, object>)row).ToList();
-
-    // Escrever os dados no arquivo CSV
-    using (var writer = new StreamWriter("resultado.csv", false, System.Text.Encoding.UTF8))
-    using (var csv = new CsvWriter(writer, new CsvHelper.Configuration.CsvConfiguration(new CultureInfo("pt-BR"))))
+    public static byte[] GenerateCsvDynamic(List<dynamic> data)
     {
-        if (csvData.Any())
-        {
-            // Escreve os cabeçalhos com base nas chaves do primeiro registro
-            foreach (var header in csvData.First().Keys)
-            {
-                csv.WriteField(header);
-            }
-            csv.NextRecord();
 
-            // Escreve os valores
-            foreach (var record in csvData)
+        try
+        {
+            // Converter os resultados para um formato utilizável pelo CsvHelper
+            var csvData = data.Select(row => (IDictionary<string, object>)row).ToList();
+
+            // Escrever os dados no arquivo CSV
+            //config utf-8 and separado por ;
+            using (var writer = new MemoryStream())
+            using (var streamWriter = new StreamWriter(writer, Encoding.UTF8))
+            using (var csv = new CsvWriter(streamWriter, new CsvHelper.Configuration.CsvConfiguration(new CultureInfo("pt-BR")) { Delimiter = ";" }))
             {
-                foreach (var value in record.Values)
+                if (csvData.Any())
                 {
-                    csv.WriteField(value);
+                    // Escreve os cabeçalhos com base nas chaves do primeiro registro
+                    foreach (var header in csvData.First().Keys)
+                    {
+                        csv.WriteField(header);
+                    }
+                    csv.NextRecord();
+
+                    // Escreve os valores
+                    foreach (var record in csvData)
+                    {
+                        foreach (var value in record.Values)
+                        {
+                            csv.WriteField(value);
+                        }
+                        csv.NextRecord();
+                    }
                 }
-                csv.NextRecord();
+                streamWriter.Flush();
+                return writer.ToArray();
             }
+        }
+        catch (Exception e)
+        {
+            throw new Exception(e.Message);
         }
     }
 }
