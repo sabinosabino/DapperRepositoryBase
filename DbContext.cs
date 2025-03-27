@@ -46,6 +46,11 @@ namespace BaseDapper
             string sql = $"SELECT * FROM {GetTableName<T>()} WHERE Id = @Id";
             return await _connection.QueryFirstOrDefaultAsync<T>(sql, param);
         }
+        public async Task<T> QueryFirstOrDefaultAsync<T>(string expressao, object param)
+        {
+            string sql = $"SELECT * FROM {GetTableName<T>()} WHERE {expressao}";
+            return await _connection.QueryFirstOrDefaultAsync<T>(sql, param);
+        }
 
         public async Task<int> InsertAsync<T>(T entity, string ignore = "Id")
         {
@@ -238,6 +243,10 @@ namespace BaseDapper
         public async Task<T> GetOne(int id)
         {
             return await _db.QueryFirstOrDefaultAsync<T>(new { Id = id });
+        }
+        public async Task<T> GetOne(string expressao, object param)
+        {
+            return await _db.QueryFirstOrDefaultAsync<T>(expressao, param);
         }
         public async Task<T> GetLast(string idColumn = "Id")
         {
