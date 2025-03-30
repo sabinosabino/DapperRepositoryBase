@@ -6,8 +6,9 @@ public class ManagementMigrations
 {
     private readonly IDbConnection _connection;
     private readonly string _folderMigrations;
-    
-    public ManagementMigrations(IDbConnection connection, string folderMigrations){
+
+    public ManagementMigrations(IDbConnection connection, string folderMigrations)
+    {
         _connection = connection;
         _folderMigrations = folderMigrations;
     }
@@ -49,7 +50,7 @@ public class ManagementMigrations
         foreach (var migrationFile in migrationFiles)
         {
             var scriptName = Path.GetFileName(migrationFile);
-            
+
             // Skip if migration has already been executed
             if (executedMigrations.Contains(scriptName))
                 continue;
@@ -73,6 +74,9 @@ public class ManagementMigrations
                 );
 
                 Console.WriteLine($"Successfully executed migration: {scriptName}");
+
+                // Create the next script after all migrations are executed
+                //await CreateNextScript();
             }
             catch (Exception ex)
             {
@@ -81,20 +85,22 @@ public class ManagementMigrations
             }
         }
 
-        // Create the next script after all migrations are executed
-        await CreateNextScript();
     }
 
-    public async Task CreateTableManagementMigrationsMysql(){
+    public async Task CreateTableManagementMigrationsMysql()
+    {
         await _connection.ExecuteAsync("CREATE TABLE IF NOT EXISTS management_migrations (id INT PRIMARY KEY, name VARCHAR(255) NOT NULL,  scriptName VARCHAR(255) NOT NULL, createdAt DATETIME NOT NULL)");
     }
-    public async Task CreateTableManagementMigrationsPostgres(){
+    public async Task CreateTableManagementMigrationsPostgres()
+    {
         await _connection.ExecuteAsync("CREATE TABLE IF NOT EXISTS management_migrations (id INT PRIMARY KEY, name VARCHAR(255) NOT NULL,  scriptName VARCHAR(255) NOT NULL, createdAt DATETIME NOT NULL)");
     }
-    public async Task CreateTableManagementMigrationsSqlite(){
+    public async Task CreateTableManagementMigrationsSqlite()
+    {
         await _connection.ExecuteAsync("CREATE TABLE IF NOT EXISTS management_migrations (id INT PRIMARY KEY, name VARCHAR(255) NOT NULL,  scriptName VARCHAR(255) NOT NULL, createdAt DATETIME NOT NULL)");
     }
-    public async Task CreateTableManagementMigrationsSqlServer(){
+    public async Task CreateTableManagementMigrationsSqlServer()
+    {
         await _connection.ExecuteAsync("CREATE TABLE IF NOT EXISTS management_migrations (id INT PRIMARY KEY, name VARCHAR(255) NOT NULL,  scriptName VARCHAR(255) NOT NULL, createdAt DATETIME NOT NULL)");
     }
 
