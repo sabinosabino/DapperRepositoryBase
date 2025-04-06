@@ -399,14 +399,14 @@ public class CodeTemplateController : Controller
             {
                 // Inserir novo
                 connection.Execute(
-                    "INSERT INTO ConnectionStrings (Name, Value, Description) VALUES (@Name, @Value, @Description)",
+                    "INSERT INTO ConnectionStrings (Name, Value, Description, Path) VALUES (@Name, @Value, @Description, @Path)",
                     connectionString);
             }
             else
             {
                 // Atualizar existente
                 connection.Execute(
-                    "UPDATE ConnectionStrings SET Name = @Name, Value = @Value, Description = @Description WHERE Id = @Id",
+                    "UPDATE ConnectionStrings SET Name = @Name, Value = @Value, Description = @Description, Path = @Path WHERE Id = @Id",
                     connectionString);
             }
 
@@ -671,6 +671,9 @@ public class CodeTemplateController : Controller
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
             
+            var connectionString = connection.QueryFirstOrDefault<ConnectionString>(
+                "SELECT * FROM ConnectionStrings ORDER BY Id DESC LIMIT 1");
+
             var table = connection.QueryFirstOrDefault<TableMetadata>(
                 "SELECT * FROM TableMetadata WHERE Id = @Id",
                 new { Id = id });
@@ -684,8 +687,9 @@ public class CodeTemplateController : Controller
                 "SELECT * FROM ColumnMetadata WHERE TableId = @TableId",
                 new { TableId = id }).ToList();
 
+            var modelsPath = Path.Combine(connectionString.Path, "Models");
+
             // Criar diretório Models se não existir
-            var modelsPath = Path.Combine(Directory.GetCurrentDirectory(), "Models");
             if (!Directory.Exists(modelsPath))
             {
                 Directory.CreateDirectory(modelsPath);
@@ -789,6 +793,9 @@ public class CodeTemplateController : Controller
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
             
+            var connectionString = connection.QueryFirstOrDefault<ConnectionString>(
+                "SELECT * FROM ConnectionStrings ORDER BY Id DESC LIMIT 1");
+
             var table = connection.QueryFirstOrDefault<TableMetadata>(
                 "SELECT * FROM TableMetadata WHERE Id = @Id",
                 new { Id = id });
@@ -800,7 +807,7 @@ public class CodeTemplateController : Controller
 
             // Verificar se o arquivo do modelo existe
             var fileName = ToPascalCase(table.TableName);
-            var modelPath = Path.Combine(Directory.GetCurrentDirectory(), "Models", $"{fileName}.cs");
+            var modelPath = Path.Combine(connectionString.Path, "Models", $"{fileName}.cs");
             
             if (!System.IO.File.Exists(modelPath))
             {
@@ -820,7 +827,7 @@ public class CodeTemplateController : Controller
             }
 
             // Criar diretório Repositories se não existir
-            var repositoriesPath = Path.Combine(Directory.GetCurrentDirectory(), "Repositories");
+            var repositoriesPath = Path.Combine(connectionString.Path, "Repositories");
             if (!Directory.Exists(repositoriesPath))
             {
                 Directory.CreateDirectory(repositoriesPath);
@@ -932,6 +939,8 @@ public class ConnectionString
 
     [Display(Name = "Descrição")]
     public string Description { get; set; }
+
+    public string Path { get; set; }
 }
 
 public class TableColumn
