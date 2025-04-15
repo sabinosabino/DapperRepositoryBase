@@ -8,7 +8,6 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Dapper;
-using Repositories;
 
 namespace BaseDapper
 {
@@ -29,11 +28,52 @@ namespace BaseDapper
             string sql = $"SELECT * FROM {GetTableName<T>()}";
             return await _connection.QueryAsync<T>(sql, param);
         }
-        public async Task<int> NewIdAsync<T>(string idColumn="Id")
+        public async Task<IEnumerable<T>> QueryIn<T>(int[] ints, string campo = "id")
         {
-                string sql = $"SELECT MAX({idColumn}) FROM {GetTableName<T>()}";
-                var result = await _connection.QuerySingleOrDefaultAsync<int>(sql);
-                return Convert.ToInt32(result) + 1;
+            if (ints.Length == 0)
+                return Enumerable.Empty<T>();
+            var values = string.Join(",", ints.Distinct());
+            string sql = $"SELECT * FROM {GetTableName<T>()} WHERE {campo} in({values})";
+            return await _connection.QueryAsync<T>(sql, new { });
+        }
+
+        public async Task<IEnumerable<T>> QueryIn<T>(DateTime[] ints, string campo = "id")
+        {
+            if (ints.Length == 0)
+                return Enumerable.Empty<T>();
+            var values = string.Join(",", ints.Distinct().Select(x => "'" + x.ToString("yyyyMMdd") + "'"));
+            string sql = $"SELECT * FROM {GetTableName<T>()} WHERE {campo} in({values})";
+            return await _connection.QueryAsync<T>(sql);
+        }
+        public async Task<IEnumerable<T>> QueryIn<T>(string[] ints, string campo = "id")
+        {
+            if (ints.Length == 0)
+                return Enumerable.Empty<T>();
+            var values = string.Join(",", ints.Distinct().Select(x => $"'{x}'"));
+            string sql = $"SELECT * FROM {GetTableName<T>()} WHERE {campo} in({values})";
+            return await _connection.QueryAsync<T>(sql);
+        }
+        public async Task<int> DeleteIn<T>(string[] ints, string campo = "id")
+        {
+            if (ints.Length == 0)
+                return 0;
+            var values = string.Join(",", ints.Distinct().Select(x => $"'{x}'"));
+            string sql = $"DELETE FROM {GetTableName<T>()} WHERE {campo} in({values})";
+            return await _connection.ExecuteAsync(sql);
+        }
+        public async Task<int> DeleteIn<T>(int[] ints, string campo = "id")
+        {
+            if (ints.Length == 0)
+                return 0;
+            var values = string.Join(",", ints.Distinct().Select(x => $"'{x}'"));
+            string sql = $"DELETE FROM {GetTableName<T>()} WHERE {campo} in({values})";
+            return await _connection.ExecuteAsync(sql);
+        }
+        public async Task<int> NewIdAsync<T>(string idColumn = "Id")
+        {
+            string sql = $"SELECT MAX({idColumn}) FROM {GetTableName<T>()}";
+            var result = await _connection.QuerySingleOrDefaultAsync<int>(sql);
+            return Convert.ToInt32(result) + 1;
         }
 
         public async Task<IEnumerable<T>> QueryAsync<T>(string expressao, object param)
@@ -95,7 +135,7 @@ namespace BaseDapper
         {
             var type = typeof(T);
             var properties = type.GetProperties();
-            
+
             // Filtra propriedades que não são NotMapped
             var validColumns = properties
                 .Where(p => !p.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute), true).Any())
@@ -103,18 +143,17 @@ namespace BaseDapper
 
             // Adiciona colunas para ignorar manualmente
             string[] ignoreColumns = !string.IsNullOrEmpty(ignore) ? ignore.Split(',') : new string[0];
-            
+
             var tableName = GetTableName<T>();
             var finalColumns = string.Join(",", validColumns.Where(c => !ignoreColumns.Contains(c)));
-            
+
             return $"INSERT INTO {tableName} ({finalColumns}) VALUES ({string.Join(",", finalColumns.Split(',').Select(c => $"@{c}"))})";
         }
-
         private string GenSqlUpdate<T>(string ignore = "")
         {
             var type = typeof(T);
             var properties = type.GetProperties();
-            
+
             // Filtra propriedades que não são NotMapped
             var validColumns = properties
                 .Where(p => !p.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute), true).Any())
@@ -122,12 +161,12 @@ namespace BaseDapper
 
             // Adiciona colunas para ignorar manualmente
             string[] ignoreColumns = !string.IsNullOrEmpty(ignore) ? ignore.Split(',') : new string[0];
-            
+
             var tableName = GetTableName<T>();
             var columnsUpdate = string.Join(",", validColumns
                 .Where(c => !ignoreColumns.Contains(c))
                 .Select(c => $"{c} = @{c}"));
-            
+
             return $"UPDATE {tableName} SET {columnsUpdate} WHERE Id = @Id";
         }
 
@@ -224,6 +263,26 @@ namespace BaseDapper
         {
             return await _db.QueryAsync<T>(new { });
         }
+        public async Task<IEnumerable<T>> QueryIn(int[] ids, string campo = "id")
+        {
+            return await _db.QueryIn<T>(ids, campo);
+        }
+        public async Task<IEnumerable<T>> QueryIn(DateTime[] ids, string campo = "id")
+        {
+            return await _db.QueryIn<T>(ids, campo);
+        }
+        public async Task<IEnumerable<T>> QueryIn(string[] ids, string campo = "id")
+        {
+            return await _db.QueryIn<T>(ids, campo);
+        }
+        public async Task<int> DeleteIn(int[] ids, string campo = "id")
+        {
+            return await _db.DeleteIn<T>(ids, campo);
+        }
+        public async Task<int> DeleteIn(string[] ids, string campo = "id")
+        {
+            return await _db.DeleteIn<T>(ids, campo);
+        }
         public async Task<int> NewId(string idColumn = "Id")
         {
             try
@@ -232,9 +291,9 @@ namespace BaseDapper
             }
             catch
             {
-                 return 1;
+                return 1;
             }
-            
+
         }
         public async Task<IEnumerable<T>> GetWhere(string expressao, object param)
         {
@@ -266,7 +325,8 @@ namespace BaseDapper
         }
     }
 
-    public class RepositoryAll{
+    public class RepositoryAll
+    {
         private readonly IDbConnection _connection;
         private readonly DbContext _db;
         public RepositoryAll(IDbConnection connection)
